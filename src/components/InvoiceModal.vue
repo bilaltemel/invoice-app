@@ -180,6 +180,8 @@
 </template>
 
 <script>
+import { mapMutations } from "vuex";
+
 export default {
   name: "InvoiceModal",
   data() {
@@ -206,6 +208,12 @@ export default {
       invoiceTotal: 0,
     };
   },
+  methods: {
+    ...mapMutations(["TOGGLE_INVOICE"]),
+    closeInvoice() {
+      this.TOGGLE_INVOICE();
+    },
+  },
 };
 </script>
 
@@ -214,27 +222,37 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.5);
   width: 100%;
   height: 100vh;
-  overflow: scroll;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  &::-webkit-scrollbar {
+    display: none;
+  }
   @media (min-width: 900px) {
     left: 90px;
   }
 
   .invoice-content {
     position: relative;
-    padding: 56px;
-    max-width: 700px;
+    padding: 40px;
+    max-width: 600px;
     width: 100%;
     background-color: #141625;
     color: #fff;
-    box-shadow: 10px 4px 6px -1px rgba(0, 0, 0, 0.2),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
+    border-radius: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 
     h1 {
-      margin-bottom: 48px;
+      margin-bottom: 32px;
       color: #fff;
+      font-size: 24px;
     }
 
     h3 {
@@ -349,15 +367,33 @@ export default {
         justify-content: flex-end;
       }
     }
+
+    // Scrollbar stilleri
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #141625; // Arka plan rengi
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #252945; // Kaydırma çubuğu rengi
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background: #1e2139; // Hover durumunda renk
+    }
   }
 
   .input {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
 
   label {
-    font-size: 24px;
-    margin-bottom: 6px;
+    font-size: 14px;
+    margin-bottom: 4px;
   }
 
   input,
