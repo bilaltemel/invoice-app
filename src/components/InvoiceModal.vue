@@ -181,6 +181,7 @@
 
 <script>
 import { mapMutations } from "vuex";
+import { uid } from "uid";
 
 export default {
   name: "InvoiceModal",
@@ -220,6 +221,31 @@ export default {
     ...mapMutations(["TOGGLE_INVOICE"]),
     closeInvoice() {
       this.TOGGLE_INVOICE();
+    },
+    addNewInvoiceItem() {
+      this.invoiceItemList.push({
+        id: uid(),
+        itemName: "",
+        qty: "",
+        price: 0,
+        total: 0,
+      });
+    },
+    deleteInvoiceItem(id) {
+      this.invoiceItemList = this.invoiceItemList.filter(
+        (item) => item.id !== id
+      );
+    },
+  },
+  watch: {
+    paymentTerms() {
+      const futureDate = new Date();
+      this.paymentDueDateUnix = futureDate.setDate(
+        futureDate.getDate() + parseInt(this.paymentTerms)
+      );
+      this.paymentDueDate = new Date(
+        this.paymentDueDateUnix
+      ).toLocaleDateString("en-us", this.dateOptions);
     },
   },
 };
@@ -373,6 +399,47 @@ export default {
 
       .right {
         justify-content: flex-end;
+        gap: 12px;
+
+        button {
+          padding: 8px 14px;
+          font-size: 12px;
+          border-radius: 24px;
+          transition: all 0.2s ease;
+          min-width: 100px;
+          border: none;
+          cursor: pointer;
+
+          &.dark-purple {
+            background-color: #252945;
+            &:hover {
+              background-color: #1e2139;
+            }
+          }
+
+          &.purple {
+            background-color: #7c5dfa;
+            &:hover {
+              background-color: #9277ff;
+            }
+          }
+        }
+      }
+
+      .left {
+        button.red {
+          padding: 8px 14px;
+          font-size: 12px;
+          border-radius: 24px;
+          border: none;
+          cursor: pointer;
+          background-color: #ec5757;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background-color: #ff9797;
+          }
+        }
       }
     }
 
