@@ -25,12 +25,21 @@
         </div>
       </div>
     </div>
+    <!-- Invoices -->
+    <div>
+      <Invoice
+        v-for="(invoice, index) in invoiceData"
+        :invoice="invoice"
+        :key="index"
+      />
+    </div>
   </div>
 </template>
 
 <script>
 // @ is an alias to /src
-import { mapMutations } from "vuex";
+import Invoice from "@/components/Invoice.vue";
+import { mapMutations, mapState } from "vuex";
 export default {
   name: "HomeView",
   data() {
@@ -46,6 +55,12 @@ export default {
     toggleFilterMenu() {
       this.filterMenu = !this.filterMenu;
     },
+  },
+  components: {
+    Invoice,
+  },
+  computed: {
+    ...mapState(["invoiceData"]),
   },
 };
 </script>
