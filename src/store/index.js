@@ -6,6 +6,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 
 export default createStore({
@@ -43,6 +44,23 @@ export default createStore({
       state.invoiceData = state.invoiceData.filter(
         (invoice) => invoice.docId !== payload
       );
+    },
+    UPDATE_STATUS_TO_PAID(state, payload) {
+      state.invoiceData.forEach((invoice) => {
+        if (invoice.docId === payload) {
+          invoice.invoicePaid = true;
+          invoice.invoicePending = false;
+        }
+      });
+    },
+    UPDATE_STATUS_TO_PENDING(state, payload) {
+      state.invoiceData.forEach((invoice) => {
+        if (invoice.docId === payload) {
+          invoice.invoicePaid = false;
+          invoice.invoicePending = true;
+          invoice.invoiceDraft = false;
+        }
+      });
     },
   },
   actions: {
@@ -93,6 +111,25 @@ export default createStore({
       const invoiceRef = doc(db, "invoices", docId);
       await deleteDoc(invoiceRef);
       commit("DELETE_INVOICE", docId);
+    },
+    async UPDATE_STATUS_TO_PAID({ commit }, docId) {
+      const db = getFirestore();
+      const invoiceRef = doc(db, "invoices", docId);
+      await updateDoc(invoiceRef, {
+        invoicePaid: true,
+        invoicePending: false,
+      });
+      commit("UPDATE_STATUS_TO_PAID", docId);
+    },
+    async UPDATE_STATUS_TO_PENDING({ commit }, docId) {
+      const db = getFirestore();
+      const invoiceRef = doc(db, "invoices", docId);
+      await updateDoc(invoiceRef, {
+        invoicePaid: false,
+        invoicePending: true,
+        invoiceDraft: false,
+      });
+      commit("UPDATE_STATUS_TO_PENDING", docId);
     },
   },
   modules: {},

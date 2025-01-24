@@ -201,7 +201,6 @@
 </template>
 
 <script>
-import { db } from "@/firebase/firebaseInit";
 import Loading from "@/components/Loading.vue";
 import { mapMutations, mapState, mapActions } from "vuex";
 import { uid } from "uid";
@@ -328,6 +327,7 @@ export default {
       this.loading = true;
       this.calInvoiceTotal();
 
+      const db = getFirestore();
       const invoicesRef = collection(db, "invoices");
       const newInvoiceRef = doc(invoicesRef);
 
@@ -357,6 +357,7 @@ export default {
       });
       this.loading = false;
       this.TOGGLE_INVOICE();
+      this.GET_INVOICES();
     },
     async updateInvoice() {
       if (this.invoiceItemList.length <= 0) {
