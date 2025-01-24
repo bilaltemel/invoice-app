@@ -6,7 +6,8 @@
   >
     <form @submit.prevent="submitForm" class="invoice-content">
       <Loading v-show="loading" />
-      <h1>New Invoice</h1>
+      <h1 v-if="!editInvoice">New Invoice</h1>
+      <h1 v-else>Edit Invoice</h1>
 
       <!-- Bill From -->
       <div class="bill-from flex flex-column">
@@ -174,11 +175,24 @@
           </button>
         </div>
         <div class="right flex">
-          <button type="submit" @click="saveDraft" class="dark-purple">
+          <button
+            v-if="!editInvoice"
+            type="submit"
+            @click="saveDraft"
+            class="dark-purple"
+          >
             Save Draft
           </button>
-          <button type="submit" @click="publishInvoice" class="purple">
+          <button
+            v-if="!editInvoice"
+            type="submit"
+            @click="publishInvoice"
+            class="purple"
+          >
             Create Invoice
+          </button>
+          <button v-if="editInvoice" type="sumbit" class="purple">
+            Update Invoice
           </button>
         </div>
       </div>
@@ -189,15 +203,22 @@
 <script>
 import { db } from "@/firebase/firebaseInit";
 import Loading from "@/components/Loading.vue";
-import { mapMutations } from "vuex";
+import { mapMutations, mapState, mapActions } from "vuex";
 import { uid } from "uid";
-import { collection, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  setDoc,
+  getFirestore,
+  updateDoc,
+} from "firebase/firestore";
 
 export default {
   name: "InvoiceModal",
   data() {
     return {
       dateOptions: { year: "numeric", month: "short", day: "numeric" },
+      docId: null,
       loading: null,
       billerStreetAddress: null,
       billerCity: null,
@@ -225,14 +246,42 @@ export default {
     Loading,
   },
   created() {
-    this.invoiceDateUnix = Date.now();
-    this.invoiceDate = new Date(this.invoiceDateUnix).toLocaleDateString(
-      "en-US",
-      this.dateOptions
-    );
+    if (!this.editInvoice) {
+      this.invoiceDateUnix = Date.now();
+      this.invoiceDate = new Date(this.invoiceDateUnix).toLocaleDateString(
+        "en-us",
+        this.dateOptions
+      );
+    }
+
+    if (this.editInvoice) {
+      const currentInvoice = this.currentInvoiceArray[0];
+      this.docId = currentInvoice.docId;
+      this.billerStreetAddress = currentInvoice.billerStreetAddress;
+      this.billerCity = currentInvoice.billerCity;
+      this.billerZipCode = currentInvoice.billerZipCode;
+      this.billerCountry = currentInvoice.billerCountry;
+      this.clientName = currentInvoice.clientName;
+      this.clientEmail = currentInvoice.clientEmail;
+      this.clientStreetAddress = currentInvoice.clientStreetAddress;
+      this.clientCity = currentInvoice.clientCity;
+      this.clientZipCode = currentInvoice.clientZipCode;
+      this.clientCountry = currentInvoice.clientCountry;
+      this.invoiceDateUnix = currentInvoice.invoiceDateUnix;
+      this.invoiceDate = currentInvoice.invoiceDate;
+      this.paymentTerms = currentInvoice.paymentTerms;
+      this.paymentDueDateUnix = currentInvoice.paymentDueDateUnix;
+      this.paymentDueDate = currentInvoice.paymentDueDate;
+      this.productDescription = currentInvoice.productDescription;
+      this.invoicePending = currentInvoice.invoicePending;
+      this.invoiceDraft = currentInvoice.invoiceDraft;
+      this.invoiceItemList = currentInvoice.invoiceItemList;
+      this.invoiceTotal = currentInvoice.invoiceTotal;
+    }
   },
   methods: {
     ...mapMutations(["TOGGLE_INVOICE", "TOGGLE_MODAL"]),
+    ...mapActions(["UPDATE_INVOICE", "GET_INVOICES"]),
     checkClick(e) {
       if (e.target === this.$refs.invoiceWrap) {
         this.TOGGLE_MODAL();
@@ -309,7 +358,53 @@ export default {
       this.loading = false;
       this.TOGGLE_INVOICE();
     },
+    async updateInvoice() {
+      if (this.invoiceItemList.length <= 0) {
+        alert("Please ensure you filled out work items!");
+        return;
+      }
+
+      this.loading = true;
+
+      this.calInvoiceTotal();
+
+      const db = getFirestore();
+      const invoiceRef = doc(db, "invoices", this.docId);
+
+      await updateDoc(invoiceRef, {
+        billerStreetAddress: this.billerStreetAddress,
+        billerCity: this.billerCity,
+        billerZipCode: this.billerZipCode,
+        billerCountry: this.billerCountry,
+        clientName: this.clientName,
+        clientEmail: this.clientEmail,
+        clientStreetAddress: this.clientStreetAddress,
+        clientCity: this.clientCity,
+        clientZipCode: this.clientZipCode,
+        clientCountry: this.clientCountry,
+        paymentTerms: this.paymentTerms,
+        paymentDueDate: this.paymentDueDate,
+        paymentDueDateUnix: this.paymentDueDateUnix,
+        productDescription: this.productDescription,
+        invoiceItemList: this.invoiceItemList,
+        invoiceTotal: this.invoiceTotal,
+      });
+
+      this.loading = false;
+
+      const data = {
+        docId: this.docId,
+        routeId: this.$route.params.invoiceId,
+      };
+
+      this.UPDATE_INVOICE(data);
+    },
+
     submitForm() {
+      if (this.editInvoice) {
+        this.updateInvoice();
+        return;
+      }
       this.uploadInvoice();
     },
   },
@@ -324,6 +419,9 @@ export default {
       ).toLocaleDateString("en-us", this.dateOptions);
     },
   },
+  computed: {
+    ...mapState(["editInvoice", "currentInvoiceArray"]),
+  },
 };
 </script>
 
@@ -332,13 +430,9 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  background-color: rgba(0, 0, 0, 0.5);
   width: 100%;
   height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  overflow: hidden;
+  overflow: scroll;
   &::-webkit-scrollbar {
     display: none;
   }
@@ -348,21 +442,17 @@ export default {
 
   .invoice-content {
     position: relative;
-    padding: 40px;
-    max-width: 600px;
+    padding: 56px;
+    max-width: 700px;
     width: 100%;
     background-color: #141625;
     color: #fff;
-    max-height: 100vh;
-    height: 100vh;
-    overflow-y: auto;
-    border-radius: 0;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 10px 4px 6px -1px rgba(0, 0, 0, 0.2),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
     h1 {
-      margin-bottom: 32px;
+      margin-bottom: 48px;
       color: #fff;
-      font-size: 24px;
     }
 
     h3 {
@@ -395,7 +485,6 @@ export default {
     .invoice-work {
       .payment {
         gap: 24px;
-
         div {
           flex: 1;
         }
@@ -405,8 +494,7 @@ export default {
         .item-list {
           width: 100%;
 
-          // Item table Styling
-
+          // Item Table Styling
           .table-heading,
           .table-items {
             gap: 16px;
@@ -475,76 +563,17 @@ export default {
 
       .right {
         justify-content: flex-end;
-        gap: 12px;
-
-        button {
-          padding: 8px 14px;
-          font-size: 12px;
-          border-radius: 24px;
-          transition: all 0.2s ease;
-          min-width: 100px;
-          border: none;
-          cursor: pointer;
-
-          &.dark-purple {
-            background-color: #252945;
-            &:hover {
-              background-color: #1e2139;
-            }
-          }
-
-          &.purple {
-            background-color: #7c5dfa;
-            &:hover {
-              background-color: #9277ff;
-            }
-          }
-        }
       }
-
-      .left {
-        button.red {
-          padding: 8px 14px;
-          font-size: 12px;
-          border-radius: 24px;
-          border: none;
-          cursor: pointer;
-          background-color: #ec5757;
-          transition: all 0.2s ease;
-
-          &:hover {
-            background-color: #ff9797;
-          }
-        }
-      }
-    }
-
-    // Scrollbar stilleri
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: #141625; // Arka plan rengi
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: #252945; // Kaydırma çubuğu rengi
-      border-radius: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb:hover {
-      background: #1e2139; // Hover durumunda renk
     }
   }
 
   .input {
-    margin-bottom: 16px;
+    margin-bottom: 24px;
   }
 
   label {
-    font-size: 14px;
-    margin-bottom: 4px;
+    font-size: 12px;
+    margin-bottom: 6px;
   }
 
   input,
